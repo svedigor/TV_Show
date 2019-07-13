@@ -2,7 +2,7 @@ import os
 from bottle import (get, post, redirect, request, route, run, static_file,
                     template, error)
 import utils
-import json
+import api_data
 # Static Routes
 
 @get("/js/<filepath:re:.*\.js>")
@@ -24,25 +24,35 @@ def index():
 
 @route('/browse')
 def browse():
-    result =[]
-    for i in utils.AVAILABE_SHOWS:
-        x = json.loads(utils.getJsonFromFile(i))
-        result.append(x)
+    #api = "http://api.tvmaze.com/shows"  #--- these are all available shows that API contains( 240 shows)
+    #result = requests.get(api).json()
+
+    result =api_data.result_data   # --- cerated appi_data.py to get data from API with dafault shows
+
+#  --- bottom code to get default data from utils.py
+#   result =[]
+#   for i in utils.AVAILABE_SHOWS:
+#       x = json.loads(utils.getJsonFromFile(i))
+#       result.append(x)
     sectionTemplate = "./templates/browse.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = result)
 
 
 @route('/ajax/show/<id>')
 def show(id):
-    result = json.loads(utils.getJsonFromFile(id))
+    result = api_data.get_show(id)
     sectionTemplate = "./templates/show.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate,
                     sectionData=result)
 
-@route('/ajax/show/7/episode/189')
-def episode ():
-    base = json.loads(utils.getJsonFromFile("7"))
-    result = base['_embedded']['episodes'][0]
+@route('/ajax/show/<showId>/episode/<episodeId>')
+def episode (showId, episodeId):
+    show_result = api_data.get_show(showId)
+    episodes_data = show_result['_embedded']['episodes']
+    for i in episodes_data:
+        if i["id"] == int(episodeId):
+            result  = i
+            break
     sectionTemplate = "./templates/episode.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate,
                     sectionData=result)
@@ -52,8 +62,8 @@ def search():
     sectionTemplate = "./templates/search.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = {})
 
-
-#@error(404)
-#def error404(error):
-#   return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = {[})
+@error(404)
+def error404(error):
+    sectionTemplate = "./templates/404.tpl"
+    return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = {})
 run(host='localhost', port=os.environ.get('PORT', 7000))
