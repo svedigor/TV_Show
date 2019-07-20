@@ -2,7 +2,8 @@ import os
 from bottle import (get, post, redirect, request, route, run, static_file,
                     template, error)
 import utils
-import api_data
+
+import requests
 # Static Routes
 
 @get("/js/<filepath:re:.*\.js>")
@@ -17,50 +18,45 @@ def css(filepath):
 def img(filepath):
     return static_file(filepath, root="./images")
 
+# home page
 @route('/')
 def index():
     sectionTemplate = "./templates/home.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = {})
 
+#assignment routes
 @route('/browse')
 def browse():
-    #api = "http://api.tvmaze.com/shows"  #--- these are all available shows that API contains( 240 shows)
-    #result = requests.get(api).json()
-
-    result =api_data.result_data   # --- cerated appi_data.py to get data from API with dafault shows
-
-#  --- bottom code to get default data from utils.py
-#   result =[]
-#   for i in utils.AVAILABE_SHOWS:
-#       x = json.loads(utils.getJsonFromFile(i))
-#       result.append(x)
+    result = utils.data_of_shows(utils.api_shows_address,utils.AVAILABE_SHOWS)
     sectionTemplate = "./templates/browse.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = result)
 
-
 @route('/ajax/show/<id>')
 def show(id):
-    result = api_data.get_show(id)
+    result = utils.get_show(id)
     sectionTemplate = "./templates/show.tpl"
-    return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate,
-                    sectionData=result)
+    return template(sectionTemplate, version=utils.getVersion(),
+                    result=result)
 
 @route('/ajax/show/<showId>/episode/<episodeId>')
 def episode (showId, episodeId):
-    show_result = api_data.get_show(showId)
-    episodes_data = show_result['_embedded']['episodes']
-    for i in episodes_data:
-        if i["id"] == int(episodeId):
-            result  = i
-            break
+    result = utils.get_episode(showId,episodeId)
     sectionTemplate = "./templates/episode.tpl"
-    return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate,
-                    sectionData=result)
+    return template(sectionTemplate, version=utils.getVersion(),
+                    result=result)
 
 @route('/search')
 def search():
     sectionTemplate = "./templates/search.tpl"
     return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate, sectionData = {})
+
+@route('/search', method = "POST")
+def search_result():
+    query = request.forms.get("q")
+    results = utils.search_result(query)
+    sectionTemplate = "./templates/search_result.tpl"
+    return template("./pages/index.html", version=utils.getVersion(), sectionTemplate=sectionTemplate,
+                    sectionData = {}, query=query, results=results)
 
 @error(404)
 def error404(error):
